@@ -1,10 +1,19 @@
 from abc import ABCMeta, abstractmethod
 
+from aiohttp import ClientSession
+
 from storage.saver import Saver
 
 
 class Parser(metaclass=ABCMeta):
     saver: Saver
+    session: ClientSession
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        await self.session.close()
 
     async def prepare(self):
         """
@@ -16,10 +25,4 @@ class Parser(metaclass=ABCMeta):
     async def parse_catalog(self):
         """
         Метод для парсинга и сохранения всего каталога сайта
-        """
-
-    @abstractmethod
-    async def find(self, search: str):
-        """
-        Метод для поиска элементов по пользовательскому вводу
         """

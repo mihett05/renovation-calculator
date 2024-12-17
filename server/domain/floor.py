@@ -6,6 +6,7 @@ class FloorType(Enum):
     linoleum = "linoleum"
     laminate = "laminate"
     paint = "paint"
+    ceramic = "ceramic"
 
 
 @dataclass

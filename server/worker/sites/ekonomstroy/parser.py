@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from bs4 import BeautifulSoup
 from aiohttp import ClientSession
 
-from domain.floor import Floor
+from domain.floor import Floor, FloorType
 from domain.wall import Wall, WallType
 from storage.saver import Saver
 from worker.parser import Parser
@@ -27,34 +27,33 @@ class EkonomstroyParser(Parser):
         self.saver = saver
         self.session = ClientSession()
 
-    async def find(self, search: str):
-        pass
-
     async def parse_catalog(self):
-        pass
+        await asyncio.gather(*(self.parse_walls(), self.parse_floors()))
 
     async def parse_walls(self):
-        (
-            self.fetch_items(
-                "https://www.ekonomstroy.ru/catalog/oboi_pod_pokrasku/",
-                self.parse_walls_wallpapers_fabric,
-            ),
-            self.fetch_items(
-                "https://www.ekonomstroy.ru/catalog/steklokholst/",
-                self.parse_walls_wallpapers_fiberglass,
-            ),
-            self.fetch_items(
-                "https://www.ekonomstroy.ru/catalog/plenka_samokleyushchayasya/",
-                self.parse_walls_wallpapers_fiberglass,
-            ),
-            self.fetch_items(
-                "https://www.ekonomstroy.ru/catalog/plitka_keramicheskaya_keramogranit/",
-                self.parse_walls_wallpapers_fiberglass,
-            ),
-            self.fetch_items(
-                "https://www.ekonomstroy.ru/catalog/dlya_sten_i_potolkov/",
-                self.parse_walls_wallpapers_fiberglass,
-            ),
+        await asyncio.gather(
+            *(
+                self.fetch_items(
+                    "https://www.ekonomstroy.ru/catalog/oboi_pod_pokrasku/",
+                    self.parse_walls_wallpapers_fabric,
+                ),
+                self.fetch_items(
+                    "https://www.ekonomstroy.ru/catalog/steklokholst/",
+                    self.parse_walls_wallpapers_fiberglass,
+                ),
+                self.fetch_items(
+                    "https://www.ekonomstroy.ru/catalog/plenka_samokleyushchayasya/",
+                    self.parse_walls_wallpapers_wrap,
+                ),
+                self.fetch_items(
+                    "https://www.ekonomstroy.ru/catalog/plitka_keramicheskaya_keramogranit/",
+                    self.parse_walls_ceramic,
+                ),
+                self.fetch_items(
+                    "https://www.ekonomstroy.ru/catalog/dlya_sten_i_potolkov/",
+                    self.parse_walls_paint,
+                ),
+            )
         )
 
     async def parse_walls_wallpapers_fabric(
@@ -91,8 +90,12 @@ class EkonomstroyParser(Parser):
             and "длина" in page.description
             and "ширина" in page.description
         ):
-            height = float(page.description["ширина"].replace(" ", "")[:-2]) / 1000
-            width = float(page.description["длина"].replace(" ", "")[:-1])
+            height = self.parse_as_float(page.description["ширина"]) / (
+                1000 if "мм" in page.description["ширина"] else 1
+            )
+            width = self.parse_as_float(page.description["длина"]) / (
+                1000 if "мм" in page.description["длина"] else 1
+            )
             price = page.price / (height * width)
         elif page.unit != "м2":
             return
@@ -118,7 +121,9 @@ class EkonomstroyParser(Parser):
             height = float(
                 page.description["ширина"].replace(" ", "").replace(",", ".")[:-1]
             )
-            width = float(page.description["длина"].replace(" ", "")[:-1])
+            width = float(
+                page.description["длина"].replace(" ", "").replace(",", ".")[:-1]
+            )
             price = page.price / (height * width)
         elif page.unit != "м2":
             return
@@ -142,25 +147,112 @@ class EkonomstroyParser(Parser):
             color=page.description["цвет"],
         )
 
-    async def parse_walls_paint(self, page: Page, soup: BeautifulSoup) -> Wall:
+    async def parse_walls_paint(self, page: Page, soup: BeautifulSoup) -> Wall | None:
         if (
             page.unit == "шт"
             and "расход" in page.description
             and ("объем" in page.description or "фасовка" in page.description)
         ):
-            usage = (
-                page.description["расход"].replace(" ", "")[:-2]
-                if "расход" in page.description
-                else page.description["фасовка"].replace(" ", "")[:-2]
-            ).replace(",", ".")
+            usage = self.parse_as_float(page.description["расход"].split("-")[-1])
+            volume = self.parse_as_float(
+                page.description["объем"]
+                if "объем" in page.description
+                else page.description["фасовка"]
+            )
+
             return Wall(
                 uid=page.uid,
                 url=page.url,
-                price=page.price,
+                price=page.price * volume / (usage / 1000),
                 photo=page.photo,
-                wall_type=WallType.ceramic,
+                wall_type=WallType.paint,
                 color=page.description["цвет"],
             )
+
+    async def parse_floors(self):
+        await asyncio.gather(
+            *(
+                self.fetch_items(
+                    "https://www.ekonomstroy.ru/catalog/plitka_keramicheskaya_keramogranit/",
+                    self.parse_floors_ceramic,
+                ),
+                self.fetch_items(
+                    "https://www.ekonomstroy.ru/catalog/napolnye_pokrytiya/",
+                    self.parse_floors_paint,
+                ),
+                self.fetch_items(
+                    "https://www.ekonomstroy.ru/catalog/laminat/",
+                    self.parse_floor_laminate,
+                ),
+                self.fetch_items(
+                    "https://www.ekonomstroy.ru/catalog/linoleum/",
+                    self.parse_floor_linoleum,
+                ),
+            )
+        )
+
+    async def parse_floors_ceramic(self, page: Page, soup: BeautifulSoup) -> Floor:
+        return Floor(
+            uid=page.uid,
+            url=page.url,
+            price=page.price,
+            photo=page.photo,
+            floor_type=FloorType.ceramic,
+            color=page.description["цвет"],
+        )
+
+    async def parse_floors_paint(self, page: Page, soup: BeautifulSoup) -> Floor | None:
+        if (
+            page.unit == "шт"
+            and "расход" in page.description
+            and ("объем" in page.description or "фасовка" in page.description)
+        ):
+            if "кг" in page.description["расход"]:
+                mass, area = page.description["расход"].split("/")
+                mass = self.parse_as_float(mass)
+                area = self.parse_as_float(area.split("-")[-1])
+                usage = mass / area
+            else:
+                usage = (
+                    self.parse_as_float(page.description["расход"].split("-")[-1])
+                    / 1000
+                )
+            volume = self.parse_as_float(
+                page.description["объем"] if "объем" else page.description["фасовка"]
+            )
+
+            return Floor(
+                uid=page.uid,
+                url=page.url,
+                price=page.price * volume / usage,
+                photo=page.photo,
+                floor_type=FloorType.paint,
+                color=page.description["цвет"],
+            )
+
+    async def parse_floor_laminate(
+        self, page: Page, soup: BeautifulSoup
+    ) -> Floor | None:
+        return Floor(
+            uid=page.uid,
+            url=page.url,
+            price=page.price,
+            photo=page.photo,
+            floor_type=FloorType.laminate,
+            color=page.description["цвет"],
+        )
+
+    async def parse_floor_linoleum(
+        self, page: Page, soup: BeautifulSoup
+    ) -> Floor | None:
+        return Floor(
+            uid=page.uid,
+            url=page.url,
+            price=page.price,
+            photo=page.photo,
+            floor_type=FloorType.linoleum,
+            color=page.description["цвет"],
+        )
 
     async def fetch_items(
         self,
@@ -193,11 +285,14 @@ class EkonomstroyParser(Parser):
             photo = a_img.get("href")
 
         description = {}
-        if rows := soup.select_one(".descr dl.row"):
+        if rows := soup.select(".descr dl.row"):
             for row in rows:
                 if key := row.select_one("dt"):
                     if value := row.select_one("dd"):
-                        description[key.text.lower()] = value.text
+                        description[key.text.lower().strip()] = value.text.strip()
+
+        if "цвет" not in description:
+            description["цвет"] = "белый"
 
         price = None
         unit = None
@@ -208,18 +303,30 @@ class EkonomstroyParser(Parser):
         if uid_span := soup.select_one(".attrs p span.att_span"):
             uid = uid_span.text.strip()
 
-        if price and unit and uid:
-            result = await parse(
-                Page(
-                    uid=uid,
-                    url=url,
-                    price=price,
-                    unit=unit,
-                    photo=photo,
-                    description=description,
-                ),
-                soup,
-            )
+        if not price or not unit or not uid:
+            return
+
+        result = await parse(
+            Page(
+                uid=uid,
+                url=url,
+                price=price,
+                unit=unit,
+                photo=f"https://www.ekonomstroy.ru{photo}",
+                description=description,
+            ),
+            soup,
+        )
+        if not result:
+            return
+
+        print(len(self.saver.storage))
+
+        if isinstance(result, Wall):
+            await self.saver.save_wall(result)
+        elif isinstance(result, Floor):
+            await self.saver.save_floor(result)
+
         # нет смысла парсить покрытия без цены
 
     @staticmethod
@@ -228,4 +335,12 @@ class EkonomstroyParser(Parser):
         Парсит цену с сайта и возвращает цену и единицу измерения (шт, м2, ...)
         """
         price_part, unit_part = price.split("/")
-        return int("".join(filter(str.isdigit, price_part))), unit_part.lower()
+        return int("".join(filter(str.isdigit, price_part))), unit_part.lower().strip()
+
+    @staticmethod
+    def parse_as_float(value: str) -> float:
+        return float(
+            "".join(
+                filter(lambda x: x in "0123456789" or x == ".", value.replace(",", "."))
+            )
+        )
