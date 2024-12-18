@@ -18,8 +18,9 @@ class Page:
     url: str
     price: int
     unit: str
-    photo: str | None
+    photo: str
     description: dict[str, str]
+    name: str
 
 
 class EkonomstroyParser(Parser):
@@ -28,33 +29,39 @@ class EkonomstroyParser(Parser):
         self.session = ClientSession()
 
     async def parse_catalog(self):
-        await asyncio.gather(*(self.parse_walls(), self.parse_floors()))
+        walls, floors = await asyncio.gather(*(self.parse_walls(), self.parse_floors()))
+        await self.saver.save_walls(walls)
+        await self.saver.save_floors(floors)
 
-    async def parse_walls(self):
-        await asyncio.gather(
-            *(
-                self.fetch_items(
-                    "https://www.ekonomstroy.ru/catalog/oboi_pod_pokrasku/",
-                    self.parse_walls_wallpapers_fabric,
-                ),
-                self.fetch_items(
-                    "https://www.ekonomstroy.ru/catalog/steklokholst/",
-                    self.parse_walls_wallpapers_fiberglass,
-                ),
-                self.fetch_items(
-                    "https://www.ekonomstroy.ru/catalog/plenka_samokleyushchayasya/",
-                    self.parse_walls_wallpapers_wrap,
-                ),
-                self.fetch_items(
-                    "https://www.ekonomstroy.ru/catalog/plitka_keramicheskaya_keramogranit/",
-                    self.parse_walls_ceramic,
-                ),
-                self.fetch_items(
-                    "https://www.ekonomstroy.ru/catalog/dlya_sten_i_potolkov/",
-                    self.parse_walls_paint,
-                ),
+    async def parse_walls(self) -> list[Wall]:
+        return [
+            wall
+            for result in await asyncio.gather(
+                *(
+                    self.fetch_items(
+                        "https://www.ekonomstroy.ru/catalog/oboi_pod_pokrasku/",
+                        self.parse_walls_wallpapers_fabric,
+                    ),
+                    self.fetch_items(
+                        "https://www.ekonomstroy.ru/catalog/steklokholst/",
+                        self.parse_walls_wallpapers_fiberglass,
+                    ),
+                    self.fetch_items(
+                        "https://www.ekonomstroy.ru/catalog/plenka_samokleyushchayasya/",
+                        self.parse_walls_wallpapers_wrap,
+                    ),
+                    self.fetch_items(
+                        "https://www.ekonomstroy.ru/catalog/plitka_keramicheskaya_keramogranit/",
+                        self.parse_walls_ceramic,
+                    ),
+                    self.fetch_items(
+                        "https://www.ekonomstroy.ru/catalog/dlya_sten_i_potolkov/",
+                        self.parse_walls_paint,
+                    ),
+                )
             )
-        )
+            for wall in result
+        ]
 
     async def parse_walls_wallpapers_fabric(
         self, page: Page, soup: BeautifulSoup
@@ -79,6 +86,7 @@ class EkonomstroyParser(Parser):
             photo=page.photo,
             wall_type=WallType.wallpaper,
             color=page.description["цвет"],
+            name=page.name,
         )
 
     async def parse_walls_wallpapers_fiberglass(
@@ -107,6 +115,7 @@ class EkonomstroyParser(Parser):
             photo=page.photo,
             wall_type=WallType.wallpaper,
             color=page.description["цвет"],
+            name=page.name,
         )
 
     async def parse_walls_wallpapers_wrap(
@@ -135,6 +144,7 @@ class EkonomstroyParser(Parser):
             photo=page.photo,
             wall_type=WallType.wallpaper,
             color=page.description["цвет"],
+            name=page.name,
         )
 
     async def parse_walls_ceramic(self, page: Page, soup: BeautifulSoup) -> Wall:
@@ -145,6 +155,7 @@ class EkonomstroyParser(Parser):
             photo=page.photo,
             wall_type=WallType.ceramic,
             color=page.description["цвет"],
+            name=page.name,
         )
 
     async def parse_walls_paint(self, page: Page, soup: BeautifulSoup) -> Wall | None:
@@ -167,29 +178,34 @@ class EkonomstroyParser(Parser):
                 photo=page.photo,
                 wall_type=WallType.paint,
                 color=page.description["цвет"],
+                name=page.name,
             )
 
-    async def parse_floors(self):
-        await asyncio.gather(
-            *(
-                self.fetch_items(
-                    "https://www.ekonomstroy.ru/catalog/plitka_keramicheskaya_keramogranit/",
-                    self.parse_floors_ceramic,
-                ),
-                self.fetch_items(
-                    "https://www.ekonomstroy.ru/catalog/napolnye_pokrytiya/",
-                    self.parse_floors_paint,
-                ),
-                self.fetch_items(
-                    "https://www.ekonomstroy.ru/catalog/laminat/",
-                    self.parse_floor_laminate,
-                ),
-                self.fetch_items(
-                    "https://www.ekonomstroy.ru/catalog/linoleum/",
-                    self.parse_floor_linoleum,
-                ),
+    async def parse_floors(self) -> list[Floor]:
+        return [
+            floor
+            for result in await asyncio.gather(
+                *(
+                    self.fetch_items(
+                        "https://www.ekonomstroy.ru/catalog/plitka_keramicheskaya_keramogranit/",
+                        self.parse_floors_ceramic,
+                    ),
+                    self.fetch_items(
+                        "https://www.ekonomstroy.ru/catalog/napolnye_pokrytiya/",
+                        self.parse_floors_paint,
+                    ),
+                    self.fetch_items(
+                        "https://www.ekonomstroy.ru/catalog/laminat/",
+                        self.parse_floor_laminate,
+                    ),
+                    self.fetch_items(
+                        "https://www.ekonomstroy.ru/catalog/linoleum/",
+                        self.parse_floor_linoleum,
+                    ),
+                )
             )
-        )
+            for floor in result
+        ]
 
     async def parse_floors_ceramic(self, page: Page, soup: BeautifulSoup) -> Floor:
         return Floor(
@@ -199,6 +215,7 @@ class EkonomstroyParser(Parser):
             photo=page.photo,
             floor_type=FloorType.ceramic,
             color=page.description["цвет"],
+            name=page.name,
         )
 
     async def parse_floors_paint(self, page: Page, soup: BeautifulSoup) -> Floor | None:
@@ -228,6 +245,7 @@ class EkonomstroyParser(Parser):
                 photo=page.photo,
                 floor_type=FloorType.paint,
                 color=page.description["цвет"],
+                name=page.name,
             )
 
     async def parse_floor_laminate(
@@ -240,6 +258,7 @@ class EkonomstroyParser(Parser):
             photo=page.photo,
             floor_type=FloorType.laminate,
             color=page.description["цвет"],
+            name=page.name,
         )
 
     async def parse_floor_linoleum(
@@ -252,6 +271,7 @@ class EkonomstroyParser(Parser):
             photo=page.photo,
             floor_type=FloorType.linoleum,
             color=page.description["цвет"],
+            name=page.name,
         )
 
     async def fetch_items(
@@ -260,7 +280,7 @@ class EkonomstroyParser(Parser):
         parse: Callable[
             [Page, BeautifulSoup], Coroutine[Any, Any, Wall | Floor | None]
         ],
-    ):
+    ) -> list[Wall | Floor]:
         soup = await get_and_parse(
             self.session,
             f"{catalog}?pagecount=4096",
@@ -269,7 +289,13 @@ class EkonomstroyParser(Parser):
             f"https://www.ekonomstroy.ru{link.get('href')}"
             for link in soup.select(".asd2 .asd1 a.bx_catalog_item_images[href]")
         ]
-        await asyncio.gather(*[self.fetch_wrapper(parse, link) for link in links])
+        return [
+            result
+            for result in await asyncio.gather(
+                *[self.fetch_wrapper(parse, link) for link in links]
+            )
+            if result
+        ]
 
     async def fetch_wrapper(
         self,
@@ -277,8 +303,12 @@ class EkonomstroyParser(Parser):
             [Page, BeautifulSoup], Coroutine[Any, Any, Wall | Floor | None]
         ],
         url: str,
-    ):
+    ) -> Wall | Floor | None:
         soup = await get_and_parse(self.session, url)
+
+        name = None
+        if h1 := soup.select_one(".bx-title"):
+            name = h1.text
 
         photo = None
         if a_img := soup.select_one(".detail-img-zoom[href]"):
@@ -306,28 +336,18 @@ class EkonomstroyParser(Parser):
         if not price or not unit or not uid:
             return
 
-        result = await parse(
+        return await parse(
             Page(
                 uid=uid,
                 url=url,
                 price=price,
                 unit=unit,
-                photo=f"https://www.ekonomstroy.ru{photo}",
+                photo=f"https://www.ekonomstroy.ru{photo}" if photo else "",
                 description=description,
+                name=name or "",
             ),
             soup,
         )
-        if not result:
-            return
-
-        print(len(self.saver.storage))
-
-        if isinstance(result, Wall):
-            await self.saver.save_wall(result)
-        elif isinstance(result, Floor):
-            await self.saver.save_floor(result)
-
-        # нет смысла парсить покрытия без цены
 
     @staticmethod
     def parse_price(price: str) -> tuple[int, str]:

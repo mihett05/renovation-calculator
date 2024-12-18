@@ -11,6 +11,7 @@ class WallType(Enum):
 @dataclass
 class Wall:
     uid: str
+    name: str
     url: str
     price: float  # стоимость за м^2
     wall_type: WallType

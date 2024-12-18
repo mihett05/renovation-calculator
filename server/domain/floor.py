@@ -12,6 +12,7 @@ class FloorType(Enum):
 @dataclass
 class Floor:
     uid: str
+    name: str
     url: str
     price: float  # стоимость за м^2
     floor_type: FloorType
