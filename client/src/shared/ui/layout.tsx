@@ -1,6 +1,6 @@
-import { Link } from 'react-router';
-import { Anchor, AppShell, Flex, NavLink } from '@mantine/core';
+import { AppShell, NavLink } from '@mantine/core';
 import { IconCalculator, IconCategory } from '@tabler/icons-react';
+import { Link } from 'react-router';
 
 type LayoutProps = {
   children: React.ReactNode;

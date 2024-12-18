@@ -1,6 +1,6 @@
-import { defineConfig } from 'vite';
-import { fileURLToPath, URL } from 'node:url';
+import { URL, fileURLToPath } from 'node:url';
 import react from '@vitejs/plugin-react-swc';
+import { defineConfig } from 'vite';
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -8,6 +8,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '~': fileURLToPath(new URL('./src', import.meta.url)),
+      '@tabler/icons-react': '@tabler/icons-react/dist/esm/icons/index.mjs',
     },
   },
 });

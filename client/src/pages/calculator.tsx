@@ -1,4 +1,4 @@
-import Layout from '~/shared/layout';
+import Layout from '~/shared/ui/layout';
 import Calculator from '~/widgets/calculator';
 
 function CalculatorPage() {
