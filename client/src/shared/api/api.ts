@@ -5,13 +5,35 @@ const injectedRtkApi = api.injectEndpoints({
       GetWallsCatalogApiV1CatalogWallsGetApiResponse,
       GetWallsCatalogApiV1CatalogWallsGetApiArg
     >({
-      query: () => ({ url: `/api/v1/catalog/walls` }),
+      query: (queryArg) => ({
+        url: `/api/v1/catalog/walls`,
+        params: {
+          name: queryArg.name,
+          color: queryArg.color,
+          priceMin: queryArg.priceMin,
+          priceMax: queryArg.priceMax,
+          wallType: queryArg.wallType,
+          page: queryArg.page,
+          pageSize: queryArg.pageSize,
+        },
+      }),
     }),
     getFloorsCatalogApiV1CatalogFloorsGet: build.query<
       GetFloorsCatalogApiV1CatalogFloorsGetApiResponse,
       GetFloorsCatalogApiV1CatalogFloorsGetApiArg
     >({
-      query: () => ({ url: `/api/v1/catalog/floors` }),
+      query: (queryArg) => ({
+        url: `/api/v1/catalog/floors`,
+        params: {
+          name: queryArg.name,
+          color: queryArg.color,
+          priceMin: queryArg.priceMin,
+          priceMax: queryArg.priceMax,
+          floorType: queryArg.floorType,
+          page: queryArg.page,
+          pageSize: queryArg.pageSize,
+        },
+      }),
     }),
     searchWallsApiV1CatalogSearchWallsGet: build.query<
       SearchWallsApiV1CatalogSearchWallsGetApiResponse,
@@ -42,11 +64,27 @@ const injectedRtkApi = api.injectEndpoints({
 });
 export { injectedRtkApi as api };
 export type GetWallsCatalogApiV1CatalogWallsGetApiResponse =
-  /** status 200 Successful Response */ any;
-export type GetWallsCatalogApiV1CatalogWallsGetApiArg = void;
+  /** status 200 Successful Response */ WallsSearch;
+export type GetWallsCatalogApiV1CatalogWallsGetApiArg = {
+  name?: string | null;
+  color?: string | null;
+  priceMin?: number | null;
+  priceMax?: number | null;
+  wallType?: WallType | null;
+  page: number;
+  pageSize: number;
+};
 export type GetFloorsCatalogApiV1CatalogFloorsGetApiResponse =
-  /** status 200 Successful Response */ any;
-export type GetFloorsCatalogApiV1CatalogFloorsGetApiArg = void;
+  /** status 200 Successful Response */ FloorsSearch;
+export type GetFloorsCatalogApiV1CatalogFloorsGetApiArg = {
+  name?: string | null;
+  color?: string | null;
+  priceMin?: number | null;
+  priceMax?: number | null;
+  floorType?: FloorType | null;
+  page: number;
+  pageSize: number;
+};
 export type SearchWallsApiV1CatalogSearchWallsGetApiResponse =
   /** status 200 Successful Response */ WallsSearch;
 export type SearchWallsApiV1CatalogSearchWallsGetApiArg = {

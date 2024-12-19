@@ -1,6 +1,6 @@
 from abc import ABCMeta, abstractmethod
-from typing import Any
 
+from domain.filter import FloorsCriterias, WallsCriterias
 from domain.floor import Floor
 from domain.wall import Wall
 
@@ -13,11 +13,7 @@ class Reader(metaclass=ABCMeta):
     async def search_floors(self, search: str, limit: int) -> list[Floor]: ...
 
     @abstractmethod
-    async def filter_walls(
-        self, filters: dict[str, Any], page: int, page_size: int
-    ) -> list[Wall]: ...
+    async def filter_walls(self, filters: FloorsCriterias) -> list[Wall]: ...
 
     @abstractmethod
-    async def filter_floors(
-        self, filters: dict[str, Any], page: int, page_size: int
-    ) -> list[Floor]: ...
+    async def filter_floors(self, filters: WallsCriterias) -> list[Floor]: ...

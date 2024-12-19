@@ -1,15 +1,13 @@
-from typing import Any
-
-from sqlalchemy import select, ColumnElement, and_
+from sqlalchemy import ColumnElement, and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from domain.filter import FilterCriterias, FloorsCriterias, WallsCriterias
 from domain.floor import Floor
 from domain.wall import Wall
 from storage.reader import Reader
 
-
-from .models import WallModel, FloorModel, Base
-from .mappers import wall_mapper, floor_mapper
+from .mappers import floor_mapper, wall_mapper
+from .models import Base, FloorModel, WallModel
 
 
 class PostgresReader(Reader):
@@ -44,40 +42,48 @@ class PostgresReader(Reader):
             )
         ]
 
-    async def filter_walls(
-        self, filters: dict[str, Any], page: int, page_size: int
-    ) -> list[Wall]:
+    async def filter_walls(self, filters: WallsCriterias) -> list[Wall]:
+        clauses = self._filter_clauses(WallModel, filters)
+        if filters.wall_type:
+            clauses.append(WallModel.wall_type == filters.wall_type.value)
+
         return [
             wall_mapper(wall)
             for wall in await self.session.scalars(
                 select(WallModel)
-                .where(and_(*self._filter_clauses(WallModel, filters)))
+                .where(and_(*clauses))
                 .order_by(WallModel.uid)
-                .limit(page_size)
-                .offset(page * page_size)
+                .limit(filters.page_size)
+                .offset(filters.page * filters.page_size)
             )
         ]
 
-    async def filter_floors(
-        self, filters: dict[str, Any], page: int, page_size: int
-    ) -> list[Floor]:
+    async def filter_floors(self, filters: FloorsCriterias) -> list[Floor]:
+        clauses = self._filter_clauses(FloorModel, filters)
+        if filters.floor_type:
+            clauses.append(FloorModel.floor_type == filters.floor_type.value)
         return [
             floor_mapper(floor)
             for floor in await self.session.scalars(
                 select(FloorModel)
-                .where(and_(*self._filter_clauses(FloorModel, filters)))
+                .where(and_(*clauses))
                 .order_by(FloorModel.uid)
-                .limit(page_size)
-                .offset(page * page_size)
+                .limit(filters.page_size)
+                .offset(filters.page * filters.page_size)
             )
         ]
 
     @staticmethod
     def _filter_clauses(
-        model: type[Base], filters: dict[str, Any]
+        model: type[Base], filters: FilterCriterias
     ) -> list[ColumnElement[bool]]:
-        return [
-            getattr(model, field).__eq__(value)
-            for field, value in filters.items()
-            if hasattr(model, field)
-        ]
+        clauses = []
+        if filters.name:
+            clauses.append(model.name.ilike(f"%{filters.name}%"))
+        if filters.color:
+            clauses.append(model.color.ilike(f"%{filters.color}%"))
+        if filters.price_min:
+            clauses.append(model.price >= filters.price_min)
+        if filters.price_max:
+            clauses.append(model.price <= filters.price_max)
+        return clauses

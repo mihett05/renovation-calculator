@@ -11,6 +11,8 @@ type BaseSearchProps = {
   result?: GenericObject[];
   isLoading: boolean;
   label: string;
+  selected: GenericObject | null;
+  onSelected: (selected: GenericObject) => void;
 };
 
 function BaseSearch({
@@ -18,6 +20,8 @@ function BaseSearch({
   startSearch,
   result,
   isLoading,
+  selected,
+  onSelected,
 }: BaseSearchProps) {
   const [search, setSearch] = useState('');
 
@@ -55,6 +59,10 @@ function BaseSearch({
         );
       }}
       rightSection={isLoading && <Loader size={24} />}
+      value={JSON.stringify(selected)}
+      onChange={(_value, option) =>
+        onSelected(JSON.parse(option.value) as GenericObject)
+      }
     />
   );
 }

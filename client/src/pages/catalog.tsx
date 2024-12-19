@@ -1,5 +1,7 @@
+import Catalog from '~/widgets/catalog';
+
 function CatalogPage() {
-  return <></>;
+  return <Catalog />;
 }
 
 export default CatalogPage;

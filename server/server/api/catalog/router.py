@@ -1,20 +1,29 @@
-from fastapi import APIRouter
+from typing import Annotated
+
 from dishka.integrations.fastapi import DishkaRoute, FromDishka
+from fastapi import APIRouter, Query
 
 from storage.reader import Reader
-from .models import WallsSearch, FloorsSearch
+
+from .models import FloorsFilter, FloorsSearch, WallsFilter, WallsSearch
 
 router = APIRouter(tags=["catalog"], route_class=DishkaRoute)
 
 
-@router.get("/walls")
-async def get_walls_catalog():
-    pass
+@router.get("/walls", response_model=WallsSearch)
+async def get_walls_catalog(
+    data: Annotated[WallsFilter, Query()],
+    reader: FromDishka[Reader],
+):
+    return WallsSearch(walls=await reader.filter_walls(data))
 
 
-@router.get("/floors")
-async def get_floors_catalog():
-    pass
+@router.get("/floors", response_model=FloorsSearch)
+async def get_floors_catalog(
+    data: Annotated[FloorsFilter, Query()],
+    reader: FromDishka[Reader],
+):
+    return FloorsSearch(floors=await reader.filter_floors(data))
 
 
 @router.get("/search/walls", response_model=WallsSearch)
