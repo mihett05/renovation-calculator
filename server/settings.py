@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     )
 
     postgres_url: PostgresDsn
+    debug: bool = False
 
 
 @lru_cache

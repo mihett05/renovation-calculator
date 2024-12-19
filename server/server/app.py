@@ -1,10 +1,10 @@
 from contextlib import asynccontextmanager
-from dishka.integrations.fastapi import setup_dishka
 
+from di import create_container
+from dishka.integrations.fastapi import setup_dishka
 from fastapi import FastAPI
 from starlette.middleware.cors import CORSMiddleware
 
-from di import create_container
 from .api import router as api_router
 
 
@@ -20,7 +20,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:5173",
-        "http://localhost:5174",
+        "http://localhost:5000",
         "https://renovator.lovepaw.ru",
         "https://lovepaw.ru",
     ],
