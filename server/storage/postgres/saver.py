@@ -1,11 +1,11 @@
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.dialects.postgresql import insert
-
 from dataclasses import asdict
+
+from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from domain.floor import Floor
 from domain.wall import Wall
-from storage.postgres.models import WallModel, FloorModel
+from storage.postgres.models import FloorModel, WallModel
 from storage.saver import Saver
 
 
@@ -29,7 +29,9 @@ class PostgresSaver(Saver):
         await self.session.commit()
 
     async def save_floors(self, floors: list[Floor]):
-        insert_stmt = insert(FloorModel).values([asdict(floor) for floor in floors])
+        insert_stmt = insert(FloorModel).values(
+            [asdict(floor) for floor in floors]
+        )
         upsert_stmt = insert_stmt.on_conflict_do_update(
             index_elements=["uid"],
             set_={
@@ -40,5 +42,5 @@ class PostgresSaver(Saver):
                 "photo": insert_stmt.excluded.photo,
             },
         )
-        await self.session.execute(insert_stmt)
+        await self.session.execute(upsert_stmt)
         await self.session.commit()
