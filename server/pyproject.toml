@@ -1,0 +1,28 @@
+[tool.poetry]
+name = "server"
+version = "0.1.0"
+description = ""
+authors = ["mihett05 <mihett05@yandex.ru>"]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+aiohttp = "^3.11.10"
+beautifulsoup4 = "^4.12.3"
+lxml = "^5.3.0"
+sqlalchemy = "^2.0.36"
+asyncpg = "^0.30.0"
+alembic = "^1.14.0"
+adaptix = "^3.0.0b9"
+fastapi = "^0.115.6"
+pydantic = "^2.10.3"
+pydantic-settings = "^2.7.0"
+dishka = "^1.4.2"
+uvicorn = "^0.34.0"
+
+
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.8.3"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
